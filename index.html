@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カスタムタイピングゲーム</title>
+  <style>
+    @charset "UTF-8";
+
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      background-color: #f4f7f6;
+      color: #333;
+      text-align: center;
+      padding-top: 50px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .settings {
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px dashed #eee;
+    }
+
+    .settings-row {
+      margin-bottom: 15px;
+    }
+
+    .settings label, .settings input {
+      font-size: 16px;
+      margin: 0 5px;
+    }
+
+    select {
+      font-size: 16px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid #bdc3c7;
+      cursor: pointer;
+    }
+
+    .settings input[type="text"].id-input {
+      width: 80px;
+      padding: 5px;
+      text-align: center;
+      border: 1px solid #bdc3c7;
+      border-radius: 4px;
+    }
+
+    input[type="checkbox"] {
+      transform: scale(1.2);
+      margin-right: 8px;
+      cursor: pointer;
+    }
+
+    button {
+      background-color: #3498db;
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    button:disabled {
+      background-color: #bdc3c7;
+      cursor: not-allowed;
+    }
+
+    .game-area {
+      min-height: 200px;
+    }
+
+    #timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #e67e22;
+      margin-bottom: 15px;
+    }
+
+    #display-text {
+      font-size: 40px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: #2c3e50;
+    }
+
+    .word-container {
+      font-size: 36px;
+      letter-spacing: 3px;
+      font-family: monospace;
+      margin-bottom: 25px;
+    }
+
+    .typed {
+      color: #27ae60;
+      font-weight: bold;
+    }
+
+    .untyped {
+      color: #bdc3c7;
+    }
+
+    #user-input {
+      display: block;
+      width: 80%;
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 15px;
+      font-size: 24px;
+      text-align: center;
+      border: 2px solid #bdc3c7;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 15px;
+    }
+
+    #user-input:focus {
+      border-color: #3498db;
+      box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+    }
+
+    #user-input:disabled {
+      background-color: #ecf0f1;
+      cursor: not-allowed;
+    }
+
+    /* ヒントボタン専用のスタイル */
+    #hint-btn {
+      background-color: #f39c12;
+      font-size: 14px;
+      padding: 8px 16px;
+      margin-top: 0;
+    }
+    #hint-btn:hover:not(:disabled) {
+      background-color: #e67e22;
+    }
+
+    #message {
+      margin-top: 15px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #e74c3c;
+      height: 24px;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #7f8c8d;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>タイピングゲーム</h1>
+    
+    <div class="settings">
+      <div class="settings-row">
+        <label for="range-select">出題範囲：</label>
+        <select id="range-select">
+          <option value="h311">3年レッスン1 セクション1</option>
+          <option value="h312">3年レッスン1 セクション2</option>
+          <option value="h313">3年レッスン1 セクション3</option>
+          <option value="h321">3年レッスン2 セクション1</option>
+          <option value="h322">3年レッスン2 セクション2</option>
+          <option value="h323">3年レッスン2 セクション3</option>
+          <option value="h331">3年レッスン3 セクション1</option>
+          <option value="h332">3年レッスン3 セクション2</option>
+          <option value="h333">3年レッスン3 セクション3</option>
+          <option value="all">すべて出題</option>
+          <option value="custom">IDで細かく指定する</option>
+        </select>
+      </div>
+
+      <div class="settings-row" id="custom-range" style="display: none;">
+        <label for="start-id">開始ID:</label>
+        <input type="text" id="start-id" class="id-input" value="h31101">
+        <span>〜</span>
+        <label for="end-id">終了ID:</label>
+        <input type="text" id="end-id" class="id-input" value="h33314">
+      </div>
+      
+      <div class="settings-row">
+        <label>
+          <input type="checkbox" id="show-untyped">
+          未入力の文字（ガイド）を表示する
+        </label>
+      </div>
+
+      <div class="settings-row">
+        <label>
+          <input type="checkbox" id="swap-words">
+          表示と入力を入れ替える
+        </label>
+      </div>
+
+      <button id="start-btn">ゲームスタート</button>
+    </div>
+
+    <div class="game-area" id="game-area">
+      <div id="timer">タイム: 0.0秒</div>
+      <div id="display-text">ここに問題が表示されます</div>
+      <div class="word-container">
+        <span id="typed" class="typed"></span><span id="untyped" class="untyped"></span>
+      </div>
+      
+      <input type="text" id="user-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="ここに入力..." disabled>
+      
+      <!-- スペースキーに対応させたヒントボタン -->
+      <button id="hint-btn" disabled>💡 次の1文字を見る (スペースキー)</button>
+      
+      <div id="message"></div>
+      <div class="hint" id="hint-text" style="display: none;">※キーボードが消えたら入力欄をタップしてください</div>
+    </div>
+  </div>
+
+  <script>
+    const questions = [
+      // --- レッスン1 ---
+      { id: "h31101", display: "世界的な", target: "worldwide" },
+      { id: "h31102", display: "農業", target: "agriculture" },
+      { id: "h31103", display: "呼ぶ", target: "refer" },
+      { id: "h31104", display: "食べられる", target: "edible" },
+      { id: "h31105", display: "風景", target: "landscape" },
+      { id: "h31106", display: "空いている", target: "vacant" },
+      { id: "h31107", display: "住民", target: "resident" },
+      { id: "h31108", display: "信じられない", target: "incredible" },
+      { id: "h31109", display: "活気づける", target: "stimulate" },
+      { id: "h31110", display: "注目を集める", target: "attract attention" },
+      { id: "h31111", display: "AをBと呼ぶ", target: "refer to A as B" },
+      { id: "h31112", display: "Aの前に", target: "in front of A" },
+      { id: "h31113", display: "Aを結び付ける", target: "bring A together" },
+
+      { id: "h31201", display: "楽しみ", target: "enjoyment" },
+      { id: "h31202", display: "正式な", target: "official" },
+      { id: "h31203", display: "方法", target: "method" },
+      { id: "h31204", display: "栽培", target: "cultivation" },
+      { id: "h31205", display: "盛んになる", target: "flourish" },
+      { id: "h31206", display: "雪だるま式に", target: "snowball" },
+      { id: "h31207", display: "しやすくする", target: "make it easy to do" },
+      { id: "h31208", display: "ますます多くの", target: "an increasing number of" },
+
+      { id: "h31301", display: "創設者", target: "founder" },
+      { id: "h31302", display: "包括的な", target: "inclusive" },
+      { id: "h31303", display: "認識", target: "recognition" },
+      { id: "h31304", display: "非営利な", target: "non-commercial" },
+      { id: "h31305", display: "栄養", target: "nutrition" },
+      { id: "h31306", display: "ついに", target: "at last" },
+      { id: "h31307", display: "それぞれの", target: "each and every" },
+      
+      // --- レッスン2 ---
+      { id: "h32101", display: "結核", target: "tuberculosis" },
+      { id: "h32102", display: "～を差別する", target: "segregate" },
+      { id: "h32103", display: "一握り", target: "handful" },
+      { id: "h32104", display: "障害", target: "hurdle" },
+      { id: "h32105", display: "～を超えて", target: "beyond" },
+      { id: "h32106", display: "傑出した", target: "outstanding" },
+      { id: "h32107", display: "奨学金", target: "scholarship" },
+      { id: "h32108", display: "プロの", target: "professional" },
+      { id: "h32109", display: "～で亡くなる", target: "die of" },
+      { id: "h32110", display: "Aにもかかわらず", target: "in spite of A" },
+      
+      { id: "h32201", display: "処置", target: "procedure" }, 
+      { id: "h32202", display: "輸血", target: "blood transfusion" },
+      { id: "h32203", display: "固形の", target: "solid" },
+      { id: "h32204", display: "細胞", target: "cell" },
+      { id: "h32205", display: "血しょう", target: "plasma" },
+      { id: "h32206", display: "赤十字社", target: "Red Cross" },
+      { id: "h32207", display: "発見する", target: "make a discovery" },
+
+      { id: "h32301", display: "区別する", target: "separate" },
+      { id: "h32302", display: "提供する", target: "donate" },
+      { id: "h32303", display: "嫌う", target: "dislike" },
+      { id: "h32304", display: "抗議", target: "protest" },
+      { id: "h32305", display: "辞職する", target: "resign" },
+      { id: "h32306", display: "人種的な", target: "racial" },
+      { id: "h32307", display: "改革者", target: "reformer" },
+      { id: "h32308", display: "人種差別的な", target: "racist" },
+      { id: "h32309", display: "自分の主張を通す", target: "make one's point" },
+      { id: "h32310", display: "抗議して", target: "in protest" },
+      { id: "h32311", display: "手本を示す", target: "set an example" },
+      
+      // --- レッスン3 ---
+      { id: "h33101", display: "入り江", target: "inlet" },
+      { id: "h33102", display: "マイル", target: "mile" },
+      { id: "h33103", display: "共通点", target: "similarity" },
+      { id: "h33104", display: "リストに載せる", target: "list" },
+      { id: "h33105", display: "脅威", target: "threat" },
+      { id: "h33106", display: "水没させる", target: "submerge" },
+      { id: "h33107", display: "潮", target: "tide" },
+      { id: "h33108", display: "頻繁に", target: "frequently" }, 
+      { id: "h33109", display: "引き起こす", target: "cause" },
+      { id: "h33110", display: "Aに対処する", target: "deal with A" }, 
+      { id: "h33111", display: "Aに多大な努力を傾ける", target: "put great effort into A" },
+      { id: "h33112", display: "Aの高さ", target: "a height of" },
+      { id: "h33113", display: "Aによって", target: "due to A" },
+
+      { id: "h33201", display: "災害", target: "catastrophe" },
+      { id: "h33202", display: "シリーズ", target: "series" },
+      { id: "h33203", display: "可動の", target: "movable" },
+      { id: "h33204", display: "設置する", target: "install" },
+      { id: "h33205", display: "障壁", target: "barrier" },
+      { id: "h33206", display: "潟湖", target: "lagoon" },
+      { id: "h33207", display: "幅", target: "width" },
+      { id: "h33208", display: "巨大な", target: "enormous" },
+      { id: "h33209", display: "頭字語", target: "acronym" },
+      { id: "h33210", display: "参照", target: "reference" },
+      { id: "h33211", display: "聖書の", target: "biblical" }, 
+      { id: "h33212", display: "ポンプ", target: "pump" },
+      { id: "h33213", display: "流入する", target: "incoming" },
+      { id: "h33214", display: "海底", target: "seafloor" },
+      { id: "h33215", display: "独立して", target: "independently" },
+      { id: "h33216", display: "粗い", target: "rough" },
+      { id: "h33217", display: "Aの幅", target: "a width of A" },
+      { id: "h33218", display: "Aで満たされる", target: "be filled with A" },
+      { id: "h33219", display: "Aの下部に", target: "at the bottom of A" },
+
+      { id: "h33301", display: "重要な", target: "critical" },
+      { id: "h33302", display: "対照", target: "contrast" },
+      { id: "h33303", display: "著しく", target: "markedly" },
+      { id: "h33304", display: "弱める", target: "weaken" },
+      { id: "h33305", display: "回廊", target: "corridor" },
+      { id: "h33306", display: "接続する", target: "connect" },
+      { id: "h33307", display: "床板", target: "floorboard" },
+      { id: "h33308", display: "隙間", target: "gap" },
+      { id: "h33309", display: "いかだ", target: "raft" },
+      { id: "h33310", display: "衝突", target: "crash" },
+      { id: "h33311", display: "排除する", target: "eliminate" },
+      { id: "h33312", display: "耐える", target: "withstand" },
+      { id: "h33313", display: "さらに", target: "in addition" },
+      { id: "h33314", display: "Aの危機に", target: "in danger of A" }
+    ];
+
+    let remainingQuestions = [];
+    let currentQuestion = null; 
+    let currentWordTarget = "";
+    let currentTypedLength = 0;
+    let isComposing = false; 
+    let hintCount = 0;
+
+    let startTime;
+    let timerInterval;
+
+    const startBtn = document.getElementById("start-btn");
+    const displayEl = document.getElementById("display-text");
+    const typedEl = document.getElementById("typed");
+    const untypedEl = document.getElementById("untyped");
+    const messageEl = document.getElementById("message");
+    const showUntypedCb = document.getElementById("show-untyped");
+    const swapWordsCb = document.getElementById("swap-words");
+    const userInput = document.getElementById("user-input");
+    const hintBtn = document.getElementById("hint-btn");
+    const hintText = document.getElementById("hint-text");
+    const timerEl = document.getElementById("timer");
+
+    const rangeSelect = document.getElementById("range-select");
+    const customRangeDiv = document.getElementById("custom-range");
+
+    rangeSelect.addEventListener("change", () => {
+      if (rangeSelect.value === "custom") {
+        customRangeDiv.style.display = "block";
+      } else {
+        customRangeDiv.style.display = "none"; 
+      }
+    });
+
+    showUntypedCb.addEventListener("change", updateWordDisplay);
+
+    swapWordsCb.addEventListener("change", () => {
+      if (currentQuestion) {
+        setupCurrentQuestionDisplay();
+      }
+    });
+
+    // スペースキー押下時のイベント
+    document.addEventListener("keydown", (e) => {
+      if (e.key === " " && userInput && !userInput.disabled) {
+        // 次に打つべき文字を取得
+        const nextExpectedChar = currentWordTarget[currentTypedLength];
+        
+        // 次に打つべき文字が「スペース」以外の場合のみ、入力を防いでヒントを出す
+        if (nextExpectedChar !== " ") {
+          e.preventDefault(); // 画面スクロールや入力欄への空白入力を防ぐ
+          showHint();
+        }
+      }
+    });
+
+    // 画面のヒントボタンクリック時のイベント
+    hintBtn.addEventListener("click", () => {
+      showHint();
+      // スマホなどでキーボードを閉じないようにフォーカスを戻す
+      if (userInput && !userInput.disabled) {
+        userInput.focus();
+      }
+    });
+
+    function showHint() {
+      if (!currentWordTarget || currentTypedLength >= currentWordTarget.length) return;
+      const remainingLength = currentWordTarget.length - currentTypedLength;
+      
+      if (hintCount < remainingLength) {
+        hintCount++;
+        updateWordDisplay();
+      }
+    }
+
+    startBtn.addEventListener("click", () => {
+      const selectedRange = rangeSelect.value;
+
+      if (selectedRange === "all") {
+        remainingQuestions = [...questions]; 
+      } else if (selectedRange === "custom") {
+        const startId = document.getElementById("start-id").value;
+        const endId = document.getElementById("end-id").value;
+        remainingQuestions = questions.filter(q => q.id >= startId && q.id <= endId);
+      } else {
+        remainingQuestions = questions.filter(q => q.id.startsWith(selectedRange));
+      }
+
+      if (remainingQuestions.length === 0) {
+        messageEl.textContent = "指定された範囲に問題がありません。";
+        displayEl.textContent = "";
+        typedEl.textContent = "";
+        untypedEl.textContent = "";
+        userInput.disabled = true;
+        hintBtn.disabled = true;
+        clearInterval(timerInterval);
+        timerEl.textContent = "タイム: 0.0秒";
+        return;
+      }
+
+      messageEl.textContent = "タイピング開始！";
+      hintText.style.display = "block";
+      
+      userInput.disabled = false;
+      hintBtn.disabled = false;
+      userInput.value = "";
+      userInput.focus();
+      
+      clearInterval(timerInterval);
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        const elapsedTime = (Date.now() - startTime) / 1000;
+        timerEl.textContent = `タイム: ${elapsedTime.toFixed(1)}秒`;
+      }, 100);
+
+      setNextQuestion();
+    });
+
+    function setNextQuestion() {
+      if (remainingQuestions.length === 0) {
+        clearInterval(timerInterval);
+        const finalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+        
+        displayEl.textContent = "全問クリア！";
+        typedEl.textContent = "";
+        untypedEl.textContent = "";
+        messageEl.textContent = `お疲れ様でした！ クリアタイム: ${finalTime}秒`;
+        messageEl.style.color = "#27ae60";
+        
+        hintText.style.display = "none";
+        currentQuestion = null;
+        currentWordTarget = ""; 
+        userInput.value = "";
+        userInput.disabled = true; 
+        hintBtn.disabled = true;
+        return;
+      }
+
+      messageEl.style.color = "#e74c3c";
+      const randomIndex = Math.floor(Math.random() * remainingQuestions.length);
+      currentQuestion = remainingQuestions.splice(randomIndex, 1)[0];
+
+      setupCurrentQuestionDisplay();
+    }
+
+    function setupCurrentQuestionDisplay() {
+      const isSwapped = swapWordsCb.checked;
+      
+      displayEl.textContent = isSwapped ? currentQuestion.target : currentQuestion.display;
+      currentWordTarget = isSwapped ? currentQuestion.display : currentQuestion.target;
+      
+      currentTypedLength = 0;
+      hintCount = 0; 
+      userInput.value = "";
+      updateWordDisplay();
+    }
+
+    function updateWordDisplay() {
+      if (!currentWordTarget) return;
+
+      typedEl.textContent = currentWordTarget.substring(0, currentTypedLength);
+      
+      if (showUntypedCb.checked) {
+        untypedEl.textContent = currentWordTarget.substring(currentTypedLength);
+      } else {
+        untypedEl.textContent = currentWordTarget.substring(currentTypedLength, currentTypedLength + hintCount);
+      }
+    }
+
+    userInput.addEventListener("compositionstart", () => {
+      isComposing = true;
+    });
+
+    userInput.addEventListener("compositionend", () => {
+      isComposing = false;
+      handleInputValidation(); 
+    });
+
+    userInput.addEventListener("input", () => {
+      if (!isComposing) {
+        handleInputValidation();
+      }
+    });
+
+    function handleInputValidation() {
+      if (!currentWordTarget || currentTypedLength >= currentWordTarget.length) {
+        userInput.value = currentWordTarget ? currentWordTarget.substring(0, currentTypedLength) : "";
+        return;
+      }
+
+      const inputValue = userInput.value;
+
+      if (currentWordTarget.startsWith(inputValue)) {
+        currentTypedLength = inputValue.length;
+        hintCount = 0; 
+        updateWordDisplay();
+        
+        if (messageEl.textContent === "タイピング開始！") {
+          messageEl.textContent = "";
+        }
+
+        if (currentTypedLength === currentWordTarget.length) {
+          setTimeout(setNextQuestion, 200);
+        }
+      } else {
+        userInput.value = currentWordTarget.substring(0, currentTypedLength);
+      }
+    }
+  </script>
+</body>
+</html>
