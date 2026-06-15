@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>英和単語帳</title>
+  <title>カスタムタイピングゲーム</title>
   <style>
     @charset "UTF-8";
 
@@ -45,6 +45,12 @@
       border-radius: 4px;
       border: 1px solid #bdc3c7;
       cursor: pointer;
+      margin: 0 4px;
+    }
+
+    select:disabled {
+      background-color: #ecf0f1;
+      cursor: not-allowed;
     }
 
     .settings input[type="text"].id-input {
@@ -74,7 +80,7 @@
       font-weight: bold;
       border-radius: 6px;
       cursor: pointer;
-      margin: 0 5px;
+      margin: 5px;
       transition: background-color 0.2s;
     }
 
@@ -92,6 +98,18 @@
     }
     #stop-btn:hover:not(:disabled) {
       background-color: #c0392b;
+    }
+
+    /* 一覧ボタンのスタイル */
+    #toggle-list-btn {
+      background-color: #9b59b6;
+      display: block;
+      margin: 15px auto 0 auto;
+      width: 80%;
+      max-width: 300px;
+    }
+    #toggle-list-btn:hover:not(:disabled) {
+      background-color: #8e44ad;
     }
 
     .game-area {
@@ -195,35 +213,72 @@
       color: #7f8c8d;
       margin-top: 10px;
     }
+
+    /* 単語一覧エリアのスタイル */
+    #word-list-container {
+      margin-top: 30px;
+      padding: 20px;
+      background: #fdfdfd;
+      border-radius: 12px;
+      border: 2px solid #ecf0f1;
+      text-align: left;
+    }
+    #word-list-container h2 {
+      text-align: center;
+      color: #2c3e50;
+      border-bottom: 2px solid #9b59b6;
+      padding-bottom: 10px;
+      margin-top: 0;
+    }
+    #word-list-container h3 {
+      color: #34495e;
+      margin-top: 25px;
+      margin-bottom: 10px;
+      border-left: 5px solid #3498db;
+      padding-left: 10px;
+    }
+    .word-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    .word-table th, .word-table td {
+      border: 1px solid #bdc3c7;
+      padding: 10px 12px;
+    }
+    .word-table th {
+      background-color: #ecf0f1;
+      color: #2c3e50;
+      width: 50%;
+    }
+    .word-table tr:nth-child(even) {
+      background-color: #f9fbfb;
+    }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <h1>英和単語帳</h1>
+    <h1>英和タイピング</h1>
     
     <div class="settings">
       <div class="settings-row">
-        <label for="range-select">出題範囲：</label>
-        <select id="range-select">
-          <option value="h311">3年レッスン1 セクション1</option>
-          <option value="h312">3年レッスン1 セクション2</option>
-          <option value="h313">3年レッスン1 セクション3</option>
-          <option value="h31">3年レッスン1</option>
-          <option value="h321">3年レッスン2 セクション1</option>
-          <option value="h322">3年レッスン2 セクション2</option>
-          <option value="h323">3年レッスン2 セクション3</option>
-          <option value="h32">3年レッスン2</option>
-          <option value="h331">3年レッスン3 セクション1</option>
-          <option value="h332">3年レッスン3 セクション2</option>
-          <option value="h333">3年レッスン3 セクション3</option>
-          <option value="h33">3年レッスン3</option>
-          <option value="h341">3年レッスン4 セクション1</option>
-          <option value="h342">3年レッスン4 セクション2</option>
-          <option value="h343">3年レッスン4 セクション3</option>
-          <option value="h34">3年レッスン4</option>
+        <label>出題範囲：</label>
+        <select id="unit-select">
+          <option value="1">3年 ユニット1</option>
+          <option value="2">3年 ユニット2</option>
+          <option value="3">3年 ユニット3</option>
+          <option value="4">3年 ユニット4</option>
           <option value="all">すべて出題</option>
           <option value="custom">IDで細かく指定する</option>
+        </select>
+
+        <select id="section-select">
+          <option value="all">すべてのセクション</option>
+          <option value="1">セクション 1</option>
+          <option value="2">セクション 2</option>
+          <option value="3">セクション 3</option>
         </select>
       </div>
 
@@ -253,7 +308,11 @@
         <button id="start-btn" disabled>データ読み込み中...</button>
         <button id="stop-btn" disabled>中断</button>
       </div>
+      
+      <button id="toggle-list-btn" disabled>📖 単語一覧を見る</button>
     </div>
+
+    <div id="word-list-container" style="display: none;"></div>
 
     <div class="game-area" id="game-area">
       <div id="timer-container">
@@ -279,10 +338,10 @@
   <script>
     // =========================================================
     // ★ここを書き換える：スプレッドシートで発行したCSVのURLを貼り付けてください
-    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbcRWsdF_Dmzqd46vlaZZ2KGVo7eSm1149VlN0dk0PIBkqecHcT0miTXWNFOr1cFTCfqSi3XWKWgJ_/pub?output=csv";
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/ここにあなたのIDが入ります/pub?output=csv";
     // =========================================================
 
-    let questions = []; // スプレッドシートから読み込んだデータを格納する配列
+    let questions = []; 
     
     let remainingQuestions = [];
     let currentQuestion = null; 
@@ -297,6 +356,10 @@
 
     const startBtn = document.getElementById("start-btn");
     const stopBtn = document.getElementById("stop-btn");
+    const toggleListBtn = document.getElementById("toggle-list-btn");
+    const wordListContainer = document.getElementById("word-list-container");
+    const gameArea = document.getElementById("game-area");
+    
     const displayEl = document.getElementById("display-text");
     const typedEl = document.getElementById("typed");
     const untypedEl = document.getElementById("untyped");
@@ -309,7 +372,10 @@
     const timerEl = document.getElementById("timer");
     const bestTimeEl = document.getElementById("best-time");
     const progressEl = document.getElementById("progress"); 
-    const rangeSelect = document.getElementById("range-select");
+    
+    // UI部品を取得
+    const unitSelect = document.getElementById("unit-select");
+    const sectionSelect = document.getElementById("section-select");
     const customRangeDiv = document.getElementById("custom-range");
 
     // --- CSV読み込み処理 ---
@@ -322,6 +388,7 @@
         parseCSV(csvText);
         
         startBtn.disabled = false;
+        toggleListBtn.disabled = false;
         startBtn.textContent = "ゲームスタート";
         messageEl.textContent = "単語リストの読み込みが完了しました！";
         messageEl.style.color = "#27ae60";
@@ -365,25 +432,47 @@
         }
         row.push(current);
         
-        // 空白と余分な改行コードを削除
         row = row.map(s => s.trim());
         
         let id = row[0];
         let display = row[1];
         let target = row[2];
 
-        // ヘッダー行や空の行はスキップ
         if (!id || id.toUpperCase() === "ID" || !display || !target) continue;
 
         questions.push({ id: id, display: display, target: target });
       }
     }
 
-    // 画面を開いたときに自動でデータを読み込む
     loadQuestionsFromCSV();
 
-    function updateBestTimeDisplay() {
-      const range = rangeSelect.value;
+    // 2つのプルダウンから現在のモード（接頭辞）を計算する関数
+    function getCurrentRangeValue() {
+      const unit = unitSelect.value;
+      if (unit === "all") return "all";
+      if (unit === "custom") return "custom";
+      
+      const sec = sectionSelect.value;
+      if (sec === "all") return `h3${unit}`;
+      return `h3${unit}${sec}`;
+    }
+
+    // 画面の表示切り替えとベストタイムの更新
+    function updateUI() {
+      const unit = unitSelect.value;
+      
+      if (unit === "all") {
+        customRangeDiv.style.display = "none";
+        sectionSelect.disabled = true;
+      } else if (unit === "custom") {
+        customRangeDiv.style.display = "block";
+        sectionSelect.disabled = true;
+      } else {
+        customRangeDiv.style.display = "none";
+        sectionSelect.disabled = false;
+      }
+
+      const range = getCurrentRangeValue();
       if (range === "custom") {
         bestTimeEl.textContent = "自己ベスト: (カスタム範囲は記録されません)";
       } else {
@@ -396,25 +485,76 @@
       }
     }
 
-    updateBestTimeDisplay();
-
-    rangeSelect.addEventListener("change", () => {
-      if (rangeSelect.value === "custom") {
-        customRangeDiv.style.display = "block";
-      } else {
-        customRangeDiv.style.display = "none"; 
-      }
-      updateBestTimeDisplay();
-    });
+    unitSelect.addEventListener("change", updateUI);
+    sectionSelect.addEventListener("change", updateUI);
+    updateUI();
 
     showUntypedCb.addEventListener("change", updateWordDisplay);
-
     swapWordsCb.addEventListener("change", () => {
-      if (currentQuestion) {
-        setupCurrentQuestionDisplay();
+      if (currentQuestion) setupCurrentQuestionDisplay();
+    });
+
+    // --- 単語一覧の生成と表示切り替え ---
+    toggleListBtn.addEventListener("click", () => {
+      if (wordListContainer.style.display === "block") {
+        // 閉じる
+        wordListContainer.style.display = "none";
+        gameArea.style.display = "block";
+        toggleListBtn.textContent = "📖 単語一覧を見る";
+      } else {
+        // 開く（一覧を生成して表示）
+        generateWordList();
+        wordListContainer.style.display = "block";
+        gameArea.style.display = "none";
+        toggleListBtn.textContent = "✖ 一覧を閉じてゲームに戻る";
       }
     });
 
+    function generateWordList() {
+      if (questions.length === 0) {
+        wordListContainer.innerHTML = "<p>データがありません。</p>";
+        return;
+      }
+
+      // IDの先頭4文字（例: h311）ごとにグループ分けする
+      const grouped = {};
+      questions.forEach(q => {
+        let prefix = q.id.substring(0, 4);
+        // h311 などの形式に合わないカスタムIDは「その他」にまとめる
+        if (!/^h3\d\d$/.test(prefix)) {
+          prefix = "other";
+        }
+        if (!grouped[prefix]) {
+          grouped[prefix] = [];
+        }
+        grouped[prefix].push(q);
+      });
+
+      let html = "<h2>登録されている単語一覧</h2>";
+      const keys = Object.keys(grouped).sort();
+
+      keys.forEach(key => {
+        let title = "その他・カスタムID";
+        if (key !== "other" && key.length === 4) {
+          const u = key.charAt(2);
+          const s = key.charAt(3);
+          title = `3年 ユニット${u} セクション${s}`;
+        }
+        
+        html += `<h3>${title}</h3>`;
+        html += `<table class="word-table">
+                   <tr><th>英語</th><th>日本語</th></tr>`;
+        
+        grouped[key].forEach(q => {
+          html += `<tr><td>${q.target}</td><td>${q.display}</td></tr>`;
+        });
+        html += `</table>`;
+      });
+
+      wordListContainer.innerHTML = html;
+    }
+
+    // スペースキーでヒント
     document.addEventListener("keydown", (e) => {
       if (e.key === " " && userInput && !userInput.disabled) {
         const nextExpectedChar = currentWordTarget[currentTypedLength];
@@ -448,8 +588,13 @@
         messageEl.textContent = "単語データがありません。";
         return;
       }
+      
+      // 一覧が開いていたら強制的に閉じる
+      wordListContainer.style.display = "none";
+      gameArea.style.display = "block";
+      toggleListBtn.textContent = "📖 単語一覧を見る";
 
-      const selectedRange = rangeSelect.value;
+      const selectedRange = getCurrentRangeValue();
 
       if (selectedRange === "all") {
         remainingQuestions = [...questions]; 
@@ -484,6 +629,7 @@
       
       startBtn.disabled = true;
       stopBtn.disabled = false;
+      toggleListBtn.disabled = true; // プレイ中は一覧ボタンを無効化
       userInput.disabled = false;
       hintBtn.disabled = false;
       userInput.value = "";
@@ -504,6 +650,7 @@
       clearInterval(timerInterval);
       startBtn.disabled = false;
       stopBtn.disabled = true;
+      toggleListBtn.disabled = false;
       userInput.disabled = true;
       hintBtn.disabled = true;
       
@@ -525,7 +672,7 @@
         clearInterval(timerInterval);
         const finalTimeStr = ((Date.now() - startTime) / 1000).toFixed(1);
         const finalTimeNum = parseFloat(finalTimeStr);
-        const selectedRange = rangeSelect.value;
+        const selectedRange = getCurrentRangeValue();
         let isNewRecord = false;
 
         if (selectedRange !== "custom") {
@@ -556,8 +703,9 @@
         
         startBtn.disabled = false;
         stopBtn.disabled = true;
+        toggleListBtn.disabled = false;
         
-        updateBestTimeDisplay(); 
+        updateUI(); 
         return;
       }
 
@@ -567,74 +715,4 @@
 
       messageEl.style.color = "#e74c3c";
       const randomIndex = Math.floor(Math.random() * remainingQuestions.length);
-      currentQuestion = remainingQuestions.splice(randomIndex, 1)[0];
-
-      setupCurrentQuestionDisplay();
-    }
-
-    function setupCurrentQuestionDisplay() {
-      const isSwapped = swapWordsCb.checked;
-      
-      displayEl.textContent = isSwapped ? currentQuestion.target : currentQuestion.display;
-      currentWordTarget = isSwapped ? currentQuestion.display : currentQuestion.target;
-      
-      currentTypedLength = 0;
-      hintCount = 0; 
-      userInput.value = "";
-      updateWordDisplay();
-    }
-
-    function updateWordDisplay() {
-      if (!currentWordTarget) return;
-
-      typedEl.textContent = currentWordTarget.substring(0, currentTypedLength);
-      
-      if (showUntypedCb.checked) {
-        untypedEl.textContent = currentWordTarget.substring(currentTypedLength);
-      } else {
-        untypedEl.textContent = currentWordTarget.substring(currentTypedLength, currentTypedLength + hintCount);
-      }
-    }
-
-    userInput.addEventListener("compositionstart", () => {
-      isComposing = true;
-    });
-
-    userInput.addEventListener("compositionend", () => {
-      isComposing = false;
-      handleInputValidation(); 
-    });
-
-    userInput.addEventListener("input", () => {
-      if (!isComposing) {
-        handleInputValidation();
-      }
-    });
-
-    function handleInputValidation() {
-      if (!currentWordTarget || currentTypedLength >= currentWordTarget.length) {
-        userInput.value = currentWordTarget ? currentWordTarget.substring(0, currentTypedLength) : "";
-        return;
-      }
-
-      const inputValue = userInput.value;
-
-      if (currentWordTarget.startsWith(inputValue)) {
-        currentTypedLength = inputValue.length;
-        hintCount = 0; 
-        updateWordDisplay();
-        
-        if (messageEl.textContent === "タイピング開始！") {
-          messageEl.textContent = "";
-        }
-
-        if (currentTypedLength === currentWordTarget.length) {
-          setTimeout(setNextQuestion, 200);
-        }
-      } else {
-        userInput.value = currentWordTarget.substring(0, currentTypedLength);
-      }
-    }
-  </script>
-</body>
-</html>
+      currentQuestion = remainingQuestions.splice(randomInd
