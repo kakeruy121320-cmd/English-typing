@@ -718,4 +718,69 @@
     }
 
     function setupCurrentQuestionDisplay() {
-      const isSwap
+      const isSwapped = swapWordsCb.checked;
+      
+      displayEl.textContent = isSwapped ? currentQuestion.target : currentQuestion.display;
+      currentWordTarget = isSwapped ? currentQuestion.display : currentQuestion.target;
+      
+      currentTypedLength = 0;
+      hintCount = 0; 
+      userInput.value = "";
+      updateWordDisplay();
+    }
+
+    function updateWordDisplay() {
+      if (!currentWordTarget) return;
+
+      typedEl.textContent = currentWordTarget.substring(0, currentTypedLength);
+      
+      if (showUntypedCb.checked) {
+        untypedEl.textContent = currentWordTarget.substring(currentTypedLength);
+      } else {
+        untypedEl.textContent = currentWordTarget.substring(currentTypedLength, currentTypedLength + hintCount);
+      }
+    }
+
+    userInput.addEventListener("compositionstart", () => {
+      isComposing = true;
+    });
+
+    userInput.addEventListener("compositionend", () => {
+      isComposing = false;
+      handleInputValidation(); 
+    });
+
+    userInput.addEventListener("input", () => {
+      if (!isComposing) {
+        handleInputValidation();
+      }
+    });
+
+    function handleInputValidation() {
+      if (!currentWordTarget || currentTypedLength >= currentWordTarget.length) {
+        userInput.value = currentWordTarget ? currentWordTarget.substring(0, currentTypedLength) : "";
+        return;
+      }
+
+      const inputValue = userInput.value;
+
+      if (currentWordTarget.startsWith(inputValue)) {
+        currentTypedLength = inputValue.length;
+        hintCount = 0; 
+        updateWordDisplay();
+        
+        if (messageEl.textContent === "タイピング開始！") {
+          messageEl.textContent = "";
+        }
+
+        if (currentTypedLength === currentWordTarget.length) {
+          setTimeout(setNextQuestion, 200);
+        }
+      } else {
+        userInput.value = currentWordTarget.substring(0, currentTypedLength);
+      }
+    }
+  </script>
+</body>
+</html>
+
