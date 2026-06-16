@@ -336,10 +336,8 @@
   </div>
 
   <script>
-    // =========================================================
-    // ★ここを書き換える：スプレッドシートで発行したCSVのURLを貼り付けてください
+    // URLの最後の改行を削除して1行に修正しました
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbcRWsdF_Dmzqd46vlaZZ2KGVo7eSm1149VlN0dk0PIBkqecHcT0miTXWNFOr1cFTCfqSi3XWKWgJ_/pub?output=csv";
-    // =========================================================
 
     let questions = []; 
     
@@ -520,7 +518,6 @@
       const grouped = {};
       questions.forEach(q => {
         let prefix = q.id.substring(0, 4);
-        // h311 などの形式に合わないカスタムIDは「その他」にまとめる
         if (!/^h3\d\d$/.test(prefix)) {
           prefix = "other";
         }
@@ -715,4 +712,10 @@
 
       messageEl.style.color = "#e74c3c";
       const randomIndex = Math.floor(Math.random() * remainingQuestions.length);
-      currentQuestion = remainingQuestions.splice(randomInd
+      currentQuestion = remainingQuestions.splice(randomIndex, 1)[0];
+
+      setupCurrentQuestionDisplay();
+    }
+
+    function setupCurrentQuestionDisplay() {
+      const isSwap
