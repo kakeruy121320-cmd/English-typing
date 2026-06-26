@@ -266,25 +266,11 @@
       <div class="settings-row">
         <label>出題範囲：</label>
         <select id="unit-select">
-          <option value="1">3年 ユニット1</option>
-          <option value="2">3年 ユニット2</option>
-          <option value="3">3年 ユニット3</option>
-          <option value="4">3年 ユニット4</option>
-          <option value="5">3年 ユニット5</option>
-          <option value="6">3年 ユニット6</option>
-          <option value="7">3年 ユニット7</option>
-          <option value="8">3年 ユニット8</option>
-          <option value="9">3年 ユニット9</option>
-          
-          <option value="all">すべて出題</option>
-          <option value="custom">IDで細かく指定する</option>
+          <!-- ユニットはスプレッドシートのIDから自動生成されます -->
         </select>
 
         <select id="section-select">
-          <option value="all">すべてのセクション</option>
-          <option value="1">セクション 1</option>
-          <option value="2">セクション 2</option>
-          <option value="3">セクション 3</option>
+          <!-- セクションは選択中のユニットに応じて自動生成されます -->
         </select>
       </div>
 
@@ -346,6 +332,7 @@
     const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSbcRWsdF_Dmzqd46vlaZZ2KGVo7eSm1149VlN0dk0PIBkqecHcT0miTXWNFOr1cFTCfqSi3XWKWgJ_/pub?output=csv";
 
     let questions = []; 
+    let unitSectionMap = {}; // { "1": Set("1","2","3"), "2": Set(...), ... }
     
     let remainingQuestions = [];
     let currentQuestion = null; 
@@ -357,6 +344,10 @@
 
     let startTime;
     let timerInterval;
+
+    // 中断・再開用の状態
+    let isPaused = false;
+    let pausedElapsedMs = 0;
 
     const startBtn = document.getElementById("start-btn");
     const stopBtn = document.getElementById("stop-btn");
@@ -390,6 +381,7 @@
         const csvText = await response.text();
         
         parseCSV(csvText);
+        buildUnitSectionOptions();
         
         startBtn.disabled = false;
         toggleListBtn.disabled = false;
@@ -448,6 +440,69 @@
       }
     }
 
+    // IDから「h3<ユニット><セクション>...」を読み取り、ユニット/セクションの一覧を自動構築する
+    function buildUnitSectionOptions() {
+      unitSectionMap = {};
+
+      questions.forEach(q => {
+        const m = q.id.match(/^h3(\d)(\d)/i);
+        if (!m) return;
+        const unit = m[1];
+        const section = m[2];
+        if (!unitSectionMap[unit]) unitSectionMap[unit] = new Set();
+        unitSectionMap[unit].add(section);
+      });
+
+      const units = Object.keys(unitSectionMap).sort((a, b) => Number(a) - Number(b));
+
+      unitSelect.innerHTML = "";
+      units.forEach(u => {
+        const opt = document.createElement("option");
+        opt.value = u;
+        opt.textContent = `3年 ユニット${u}`;
+        unitSelect.appendChild(opt);
+      });
+
+      const optAll = document.createElement("option");
+      optAll.value = "all";
+      optAll.textContent = "すべて出題";
+      unitSelect.appendChild(optAll);
+
+      const optCustom = document.createElement("option");
+      optCustom.value = "custom";
+      optCustom.textContent = "IDで細かく指定する";
+      unitSelect.appendChild(optCustom);
+
+      updateSectionOptions();
+    }
+
+    // 選択中のユニットに応じて、実際に存在するセクションだけを選択肢として構築する
+    function updateSectionOptions() {
+      const unit = unitSelect.value;
+      const previousValue = sectionSelect.value;
+      sectionSelect.innerHTML = "";
+
+      const optAll = document.createElement("option");
+      optAll.value = "all";
+      optAll.textContent = "すべてのセクション";
+      sectionSelect.appendChild(optAll);
+
+      if (unitSectionMap[unit]) {
+        const sections = Array.from(unitSectionMap[unit]).sort((a, b) => Number(a) - Number(b));
+        sections.forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s;
+          opt.textContent = `セクション ${s}`;
+          sectionSelect.appendChild(opt);
+        });
+
+        // 以前選んでいたセクションが新しいユニットにも存在するなら維持する
+        if (sections.includes(previousValue)) {
+          sectionSelect.value = previousValue;
+        }
+      }
+    }
+
     loadQuestionsFromCSV();
 
     // 2つのプルダウンから現在のモード（接頭辞）を計算する関数
@@ -489,9 +544,36 @@
       }
     }
 
-    unitSelect.addEventListener("change", updateUI);
-    sectionSelect.addEventListener("change", updateUI);
-    updateUI();
+    // 出題範囲を変更したら、進行中の中断状態はリセットする（別範囲になるため再開は無効）
+    function cancelPauseIfNeeded() {
+      if (!isPaused) return;
+      isPaused = false;
+      pausedElapsedMs = 0;
+      startBtn.textContent = "ゲームスタート";
+      remainingQuestions = [];
+      currentQuestion = null;
+      currentWordTarget = "";
+      displayEl.textContent = "ここに問題が表示されます";
+      typedEl.textContent = "";
+      untypedEl.textContent = "";
+      progressEl.textContent = "問題: - / -";
+      timerEl.textContent = "タイム: 0.0秒";
+      messageEl.textContent = "";
+      hintText.style.display = "none";
+      userInput.disabled = true;
+      hintBtn.disabled = true;
+      stopBtn.disabled = true;
+    }
+
+    unitSelect.addEventListener("change", () => {
+      cancelPauseIfNeeded();
+      updateSectionOptions();
+      updateUI();
+    });
+    sectionSelect.addEventListener("change", () => {
+      cancelPauseIfNeeded();
+      updateUI();
+    });
 
     showUntypedCb.addEventListener("change", updateWordDisplay);
     swapWordsCb.addEventListener("change", () => {
@@ -585,8 +667,13 @@
       }
     }
 
-    // --- ゲームスタート ---
+    // --- ゲームスタート（または再開） ---
     startBtn.addEventListener("click", () => {
+      if (isPaused) {
+        resumeGame();
+        return;
+      }
+
       if (questions.length === 0) {
         messageEl.textContent = "単語データがありません。";
         return;
@@ -631,6 +718,7 @@
       hintText.style.display = "block";
       
       startBtn.disabled = true;
+      startBtn.textContent = "ゲームスタート";
       stopBtn.disabled = false;
       toggleListBtn.disabled = true; // プレイ中は一覧ボタンを無効化
       userInput.disabled = false;
@@ -638,6 +726,8 @@
       userInput.value = "";
       userInput.focus();
       
+      isPaused = false;
+      pausedElapsedMs = 0;
       clearInterval(timerInterval);
       startTime = Date.now();
       timerInterval = setInterval(() => {
@@ -648,26 +738,47 @@
       setNextQuestion();
     });
 
-    // --- ゲーム中断 ---
+    // --- ゲーム中断（状態は保持し、再開できるようにする） ---
     stopBtn.addEventListener("click", () => {
+      pausedElapsedMs = Date.now() - startTime;
       clearInterval(timerInterval);
+      isPaused = true;
+
       startBtn.disabled = false;
+      startBtn.textContent = "再開する";
       stopBtn.disabled = true;
       toggleListBtn.disabled = false;
       userInput.disabled = true;
       hintBtn.disabled = true;
-      
-      displayEl.textContent = "中断しました";
-      typedEl.textContent = "";
-      untypedEl.textContent = "";
-      progressEl.textContent = "問題: - / -";
-      messageEl.textContent = "";
-      hintText.style.display = "none";
-      
-      currentQuestion = null;
-      currentWordTarget = "";
-      userInput.value = "";
+
+      messageEl.textContent = "中断しました（「再開する」で続きから始められます）";
+      messageEl.style.color = "#e67e22";
+
+      // currentQuestion / remainingQuestions / currentTypedLength はそのまま保持する
     });
+
+    // --- ゲーム再開（中断した地点から続ける） ---
+    function resumeGame() {
+      isPaused = false;
+      startBtn.disabled = true;
+      startBtn.textContent = "ゲームスタート";
+      stopBtn.disabled = false;
+      toggleListBtn.disabled = true;
+      userInput.disabled = false;
+      hintBtn.disabled = false;
+      userInput.value = currentWordTarget ? currentWordTarget.substring(0, currentTypedLength) : "";
+      userInput.focus();
+
+      messageEl.textContent = "再開しました！";
+      messageEl.style.color = "#e74c3c";
+
+      startTime = Date.now() - pausedElapsedMs;
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        const elapsedTime = (Date.now() - startTime) / 1000;
+        timerEl.textContent = `タイム: ${elapsedTime.toFixed(1)}秒`;
+      }, 100);
+    }
 
     function setNextQuestion() {
       if (remainingQuestions.length === 0) {
@@ -676,9 +787,11 @@
         const finalTimeStr = ((Date.now() - startTime) / 1000).toFixed(1);
         const finalTimeNum = parseFloat(finalTimeStr);
         const selectedRange = getCurrentRangeValue();
+        const guideIsOn = showUntypedCb.checked;
         let isNewRecord = false;
 
-        if (selectedRange !== "custom") {
+        // ガイド表示がオフの時だけ記録を反映する
+        if (selectedRange !== "custom" && !guideIsOn) {
           const savedRecord = localStorage.getItem("typing_record_" + selectedRange);
           if (!savedRecord || finalTimeNum < parseFloat(savedRecord)) {
             localStorage.setItem("typing_record_" + selectedRange, finalTimeStr);
@@ -692,6 +805,8 @@
         
         if (isNewRecord) {
           messageEl.textContent = `お疲れ様でした！ クリアタイム: ${finalTimeStr}秒 【✨新記録✨】`;
+        } else if (guideIsOn) {
+          messageEl.textContent = `お疲れ様でした！ クリアタイム: ${finalTimeStr}秒 （ガイド表示中は記録されません）`;
         } else {
           messageEl.textContent = `お疲れ様でした！ クリアタイム: ${finalTimeStr}秒`;
         }
@@ -704,7 +819,10 @@
         userInput.disabled = true; 
         hintBtn.disabled = true;
         
+        isPaused = false;
+        pausedElapsedMs = 0;
         startBtn.disabled = false;
+        startBtn.textContent = "ゲームスタート";
         stopBtn.disabled = true;
         toggleListBtn.disabled = false;
         
@@ -789,4 +907,3 @@
   </script>
 </body>
 </html>
-
